@@ -18,15 +18,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.zip.GZIPOutputStream;
 
 public class Server {
+    public long processTime;
+    public long queryTime;
     public int descriptorCount = 0;
     public int fCount = 0;
-    private int queueSize = 10000;
-    private ServerSocket serverSocket;
-    private Short serverId;
-    private int corServerPort;
     // 由Server维护的若干个哈希表
     public E2LSH e2lsh;
-    private String host;
     public CountDownLatch countDownLatch;
     public HashMap<String, Integer> refineMap;
     public HashMap<String, Descriptor[]> encryptedTargetImageDescriptorMap; // 保存用SECURING SIFT
@@ -34,27 +31,20 @@ public class Server {
     // TODO 这个应该通过交互来使用
     public Descriptor[] queryDescriptorArray;
     public Descriptor[] encryptedQueryDescriptorArray;
-
     public HashMap<String, Float>[] receivedMinDistanceMapArray;
     public HashMap<String, ArrayList<Float>>[] knownDistanceMapArray;
-
     public HashMap<BucketInfo, HashSet<String>>[] indexInfoMapArray;
     public HashMap<BucketInfo, HashSet<String>>[] receivedIndexInfoMapArray;
-
     public HashMap<String, Float>[] scoreMapArray;
-
     public float sigma;
     public int Sigma;
-
-    public String printInfo = "";
-
     public int tCount = 0; // 处理的图像描述符的数量
+    private int queueSize = 10000;
+    private ServerSocket serverSocket;
+    private Short serverId;
+    private int corServerPort;
+    private String host;
 
-    public void refresh() {
-        fCount = 0;
-        tCount = 0;
-        refineMap.clear();
-    }
     public Server(Short serverId, int port, int corServerPort, LshParam[] lshParamArray) {
         this.serverId = serverId;
         this.corServerPort = corServerPort;
@@ -80,6 +70,12 @@ public class Server {
         this.e2lsh = new E2LSH(lshParamArray);
     }
 
+    public void refresh() {
+        fCount = 0;
+        tCount = 0;
+        refineMap.clear();
+    }
+
     public void service() {
         Thread thread = new Thread(new Runnable() {
             @Override
@@ -92,6 +88,7 @@ public class Server {
                         // 从连接请求队列中取出一个客户连接请求，创建与客户连接的socket对象
                         // 如果队列中没有请求，accept方法就会一直等待
                         socket = serverSocket.accept();
+                        socket.setSoTimeout(0);
                         is = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
                         os = new ObjectOutputStream(new BufferedOutputStream(socket.getOutputStream()));
 
@@ -117,7 +114,7 @@ public class Server {
                                     tCount = tCount + map.get(imageId).size();
                                 }
                             }
-                            System.out.println("服务器" + serverId + ", 对方发送的向量数量: " + tCount + ", 过滤比 " + (fCount * 1.0 / (fCount + tCount)) + ", 发送数据大小（如果不压缩）是" + tCount * 1.0 / 1024 / 1024 * 256  + " MB");
+                            System.out.println("服务器" + serverId + ", 对方发送的向量数量: " + tCount + ", 过滤比 " + (fCount * 1.0 / (fCount + tCount)) + ", 发送数据大小（如果不压缩）是" + tCount * 1.0 / 1024 / 1024 * 256 + " MB");
                             // 这里的处理是为了统计发送和接收的数据量
 
                             HashMap<String, HashMap<Integer, Short[]>>[] result = distanceCompute(wantedDistance);
@@ -177,7 +174,6 @@ public class Server {
 
     public void indexBuild() {
         // 到这一步时，S1和S2都已分别拿到了目标图像的加密的特征向量
-        long startTime = System.currentTimeMillis();
         for (String imageId : encryptedTargetImageDescriptorMap.keySet()) {
             // 索引上的：这里保存SIFT特征ID和所属的图像ID
             Integer[] descriptorIdForIndexArray = null;
@@ -201,15 +197,16 @@ public class Server {
 //            e2lsh.add(imageId, bucketArrayMap);
             secureAdd(imageId, descriptorIdForIndexArray);
         }
-        System.out.println("服务器" + serverId + "对" + tCount + "个向量建立了索引 耗时： " + (System.currentTimeMillis() - startTime));
+//        System.out.println("服务器" + serverId + "对" + tCount + "个向量建立了索引 耗时： " + (System.currentTimeMillis() - startTime));
+        System.out.println("服务器" + serverId + "对" + tCount + "个向量建立了索引 计算耗时： " + this.processTime);
         System.out.println("服务器" + serverId + e2lsh);
         LogUtil.serverLog(serverId, "索引建立完成");
+        this.processTime = 0;
 //        System.out.println(e2lsh);
         countDownLatch.countDown();
     }
 
     // 安全的桶号计算协议
-    // TODO 检查程序是否正确
     // 这里传进来的descriptorIdForIndex就只有一半的descriptor
     public HashMap<Integer, BucketInfo[]> secureCompute(String imageId, Integer[] descriptorIdForIndexArray) {
         // 首先通过交互算出各个位置的result2
@@ -229,12 +226,14 @@ public class Server {
         // 首先通过交互算出各个位置的result2
         HashMap<Integer, Float[][]> result2ArrayArrayMap = secureCompute1(imageId, descriptorIdForIndexArray);
         // 然后算出真实的桶号
+        long startTime = System.currentTimeMillis();
         for (Integer descriptorId : descriptorIdForIndexArray) {
 
             BucketInfo[] bucketInfos = e2lsh.compute(encryptedTargetImageDescriptorMap.get(imageId)[descriptorId].descriptor,
                     result2ArrayArrayMap.get(descriptorId), serverId);
             e2lsh.add(imageId, descriptorId, bucketInfos);
         }
+        this.processTime += (System.currentTimeMillis() - startTime);
     }
 
     @SuppressWarnings("unchecked")
@@ -246,6 +245,7 @@ public class Server {
     }
 
     public HashMap<Integer, Float[][]> result2ArrayArrayMapCompute(ImageDescriptors imageDescriptors) {
+        long startTime = System.currentTimeMillis();
         HashMap<Integer, Float[][]> result2ArrayArrayMap = new HashMap<>();
         for (Integer descriptorId : imageDescriptors.descriptorIdArray) {
 
@@ -258,6 +258,7 @@ public class Server {
             }
             result2ArrayArrayMap.put(descriptorId, result2ArrayArray);
         }
+        this.processTime += (System.currentTimeMillis() - startTime);
         return result2ArrayArrayMap;
     }
 
@@ -265,10 +266,12 @@ public class Server {
     public void filter() {
         // 依次计算分数
 
+        long startTimeForQuery = System.currentTimeMillis();
         scoreMapArray = new HashMap[this.e2lsh.indexArray.length];
         for (int i = 0; i < scoreMapArray.length; i++) {
             scoreMapArray[i] = new HashMap<>();
         }
+        long startTime = System.currentTimeMillis();
         for (int i = 0; i < Cbir.queryDescriptorAllocResultMapArray.length; i++) {
 //            System.out.println("处理哈希表+1");
             HashMap<BucketInfo, HashSet<Integer>> queryDescriptorAllocResultMap = Cbir.queryDescriptorAllocResultMapArray[i];
@@ -302,6 +305,8 @@ public class Server {
                 }
             }
         }
+        this.queryTime = System.currentTimeMillis() - startTimeForQuery;
+        System.out.println(this.serverId + "过滤时间: " + (System.currentTimeMillis() - startTime));
         countDownLatch.countDown();
     }
 
@@ -312,7 +317,7 @@ public class Server {
         Connection connection = DBUtil.getCon();
         // 先检索图像id
         // todo 实验测试修改
-        String sql0 = "select distinct image_id from sift_descriptor limit 320";
+        String sql0 = "select distinct image_id from sift_descriptor limit 1000";
         PreparedStatement preparedStatement = connection.prepareStatement(sql0);
         ResultSet resultSet0 = preparedStatement.executeQuery();
         while (resultSet0.next()) {
@@ -333,14 +338,16 @@ public class Server {
             Descriptor[] descriptors = encryptedDescriptorList.toArray(new Descriptor[encryptedDescriptorList.size()]);
             encryptedTargetImageDescriptorMap.put(imageId, descriptors);
             // todo 实验测试修改
-//            if (descriptorCount > 1200000) {
+//            if (descriptorCount > 300000) {
 //                break;
 //            }
         }
     }
 
     public HashMap<String, HashMap<Integer, Short[]>>[] distanceCompute(HashMap<String, HashSet<Integer>>[] receivedWantedDistanceIdMapArray) {
+
         HashMap<String, HashMap<Integer, Short[]>>[] responseDistanceMapArray = new HashMap[receivedWantedDistanceIdMapArray.length];
+        long startTime = System.currentTimeMillis();
         for (int descriptorIndex = 0; descriptorIndex < receivedWantedDistanceIdMapArray.length; descriptorIndex++) {
             HashMap<String, HashMap<Integer, Short[]>> responseDistanceMap = new HashMap();
             for (String imageId : receivedWantedDistanceIdMapArray[descriptorIndex].keySet()) {
@@ -360,6 +367,7 @@ public class Server {
             }
             responseDistanceMapArray[descriptorIndex] = responseDistanceMap;
         }
+        this.processTime += (System.currentTimeMillis() - startTime);
         return responseDistanceMapArray;
     }
 
@@ -376,6 +384,7 @@ public class Server {
         // 精确匹配是一个点一个点进行的
         // 所以数组的维数等于查询向量的数量
         fCount = 0;
+        long startTimeForQuery = System.currentTimeMillis();
         HashMap<String, HashSet<Integer>>[] requiredDistanceIdMapArray = new HashMap[encryptedQueryDescriptorArray.length];
         for (int i = 0; i < requiredDistanceIdMapArray.length; i++) {
             requiredDistanceIdMapArray[i] = new HashMap<>();
@@ -416,6 +425,7 @@ public class Server {
         // 要分享的1NN距离信息
 
         // 自己能知道的查询向量和图像向量的距离的map
+        long startTime = System.currentTimeMillis();
         knownDistanceMapArray = new HashMap[encryptedQueryDescriptorArray.length];
         HashMap<String, Float>[] minDistanceMapArray = new HashMap[knownDistanceMapArray.length];
         // 把这个距离map计算出来
@@ -448,14 +458,17 @@ public class Server {
             }
         }
 
+        this.processTime += (System.currentTimeMillis() - startTime);
         new Client(host, corServerPort).inquery(new Message(MessageType.MIN_DISTANCE, minDistanceMapArray));
         System.out.println("服务器" + serverId + "过滤了" + fCount + "个");
+        this.queryTime += (System.currentTimeMillis() - startTimeForQuery);
         countDownLatch.countDown();
     }
 
     public void exactSiftMatch() {
         refineMap = new HashMap<>();
         // 进行特征匹配
+        long startTime = System.currentTimeMillis();
         for (int i = 0; i < knownDistanceMapArray.length; i++) {
             HashMap<String, ArrayList<Float>> knownDistanceMap = knownDistanceMapArray[i];
             for (String imageId : knownDistanceMap.keySet()) {
@@ -464,7 +477,6 @@ public class Server {
                 ArrayList<Float> distanceList = knownDistanceMap.get(imageId);
                 // 如果对方不含有相关的距离或者对方的最近距离大于自己的，那么匹配就是自己完成的
                 if (!receivedMinDistanceMapArray[i].containsKey(imageId) || receivedMinDistanceMapArray[i].get(imageId) > distanceList.get(0)) {
-                    // todo 自己完成匹配
                     ArrayList<Float> compareDistanceList = new ArrayList<>();
                     compareDistanceList.add(distanceList.get(0));
                     if (distanceList.size() > 1) {
@@ -501,6 +513,7 @@ public class Server {
 //        for (String imageId : refineMap.keySet()) {
 //            System.out.println(imageId + "匹配的点数量:" + refineMap.get(imageId));
 //        }
+        this.processTime += (System.currentTimeMillis() - startTime);
         countDownLatch.countDown();
     }
 

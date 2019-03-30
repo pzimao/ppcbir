@@ -33,7 +33,7 @@ public class E2LSH {
     // 桶中只有图像ID和向量ID，没有实际的向量
     public void add(String imageId, Integer descriptorId, BucketInfo[] bucketArray) {
         // 每个向量需要加到L个桶中
-        for (int i=0;i<indexArray.length;i++) {
+        for (int i = 0; i < indexArray.length; i++) {
             indexArray[i].add(imageId, descriptorId, bucketArray[i]);
         }
     }
@@ -102,7 +102,7 @@ public class E2LSH {
             }
         }
 //		System.out.println("桶数量: " + bucketNumber + "；特征数量: " + descriptorNumber);
-        return "索引大小:" + String.valueOf((bucketNumber * 12.0  + descriptorNumber * 4)/ 1024 / 1024 + " MB");
+        return "索引大小:" + String.valueOf((bucketNumber * 12.0 + descriptorNumber * 4) / 1024 / 1024 + " MB");
     }
 
     public HashMap<String, HashSet<Integer>> getBucketContent(int indexIndex, BucketInfo bucketInfo) {

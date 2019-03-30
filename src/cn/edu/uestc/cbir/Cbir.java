@@ -23,33 +23,14 @@ public class Cbir {
     public static HashMap<String, Float> scoreMap = new HashMap<>();
     public static ArrayList<Similarity> scoreArray = new ArrayList<>();
     public static Server S1, S2;
+    public static HashMap<BucketInfo, HashSet<Integer>>[] queryDescriptorAllocResultMapArray; // 这个东西用来记录查询图像向量在L个哈希表上的分配情况
     public LshParam[] lshParamArray;
     public Descriptor[] queryDescriptors;
     public int k; // The top-k images are returned.
     public HashSet<String> imageSet = new HashSet<>();
-
-    public static HashMap<BucketInfo, HashSet<Integer>>[] queryDescriptorAllocResultMapArray; // 这个东西用来记录查询图像向量在L个哈希表上的分配情况
-
     public ArrayList<Similarity> resultList; // 图像检索的最终排序
 
     public String printInfo = "";
-
-    public static Short[] vectorSub(Short[] vector1, Short[] vector2) {
-
-        Short[] resultVector = new Short[vector1.length];
-        for (int i = 0; i < vector1.length; i++) {
-            resultVector[i] = (short) (vector1[i] - vector2[i]);
-        }
-        return resultVector;
-    }
-
-    public static Float vectorLength(Short[] vector) {
-        int sum = 0;
-        for (int i = 0; i < vector.length; i++) {
-            sum += vector[i] * vector[i];
-        }
-        return (float) Math.sqrt(sum);
-    }
 
     public Cbir(int L, int K, int w, int tableSize, int curPort1, int curPort2) throws Exception {
         // 序列化参数
@@ -86,6 +67,7 @@ public class Cbir {
         LshParam[] lshParams = new LshParam[L];
         for (int i = 0; i < lshParams.length; i++) {
             lshParams[i] = lshParamArray[i];
+            lshParams[i].K = K;
         }
         lshParamArray = lshParams;
         S1 = new Server((short) 1, curPort1, curPort2, lshParamArray);
@@ -95,186 +77,132 @@ public class Cbir {
         // 加载OPENCV库
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
-        imageSet.add("paris_general_000002.jpg");
-        imageSet.add("paris_general_000023.jpg");
-        imageSet.add("paris_general_000043.jpg");
-        imageSet.add("paris_general_000089.jpg");
-        imageSet.add("paris_general_000091.jpg");
-        imageSet.add("paris_general_000092.jpg");
-        imageSet.add("paris_general_000107.jpg");
-        imageSet.add("paris_general_000114.jpg");
-        imageSet.add("paris_general_000120.jpg");
-        imageSet.add("paris_general_000143.jpg");
-        imageSet.add("paris_general_000241.jpg");
-        imageSet.add("paris_general_000271.jpg");
-        imageSet.add("paris_general_000277.jpg");
-        imageSet.add("paris_general_000294.jpg");
-        imageSet.add("paris_general_000297.jpg");
-        imageSet.add("paris_general_000299.jpg");
-        imageSet.add("paris_general_000313.jpg");
-        imageSet.add("paris_general_000342.jpg");
-        imageSet.add("paris_general_000343.jpg");
-        imageSet.add("paris_general_000355.jpg");
-        imageSet.add("paris_general_000361.jpg");
-        imageSet.add("paris_general_000379.jpg");
-        imageSet.add("paris_general_000404.jpg");
-        imageSet.add("paris_general_000412.jpg");
-        imageSet.add("paris_general_000422.jpg");
-        imageSet.add("paris_general_000458.jpg");
-        imageSet.add("paris_general_000465.jpg");
-        imageSet.add("paris_general_000508.jpg");
-        imageSet.add("paris_general_000594.jpg");
-        imageSet.add("paris_general_000628.jpg");
-        imageSet.add("paris_general_000692.jpg");
-        imageSet.add("paris_general_000695.jpg");
-        imageSet.add("paris_general_000697.jpg");
-        imageSet.add("paris_general_000723.jpg");
-        imageSet.add("paris_general_000727.jpg");
-        imageSet.add("paris_general_000730.jpg");
-        imageSet.add("paris_general_000785.jpg");
-        imageSet.add("paris_general_000794.jpg");
-        imageSet.add("paris_general_000809.jpg");
-        imageSet.add("paris_general_000836.jpg");
-        imageSet.add("paris_general_000838.jpg");
-        imageSet.add("paris_general_000889.jpg");
-        imageSet.add("paris_general_000893.jpg");
-        imageSet.add("paris_general_000904.jpg");
-        imageSet.add("paris_general_000908.jpg");
-        imageSet.add("paris_general_000935.jpg");
-        imageSet.add("paris_general_000936.jpg");
-        imageSet.add("paris_general_000974.jpg");
-        imageSet.add("paris_general_001019.jpg");
-        imageSet.add("paris_general_001041.jpg");
-        imageSet.add("paris_general_001046.jpg");
-        imageSet.add("paris_general_001093.jpg");
-        imageSet.add("paris_general_001098.jpg");
-        imageSet.add("paris_general_001115.jpg");
-        imageSet.add("paris_general_001235.jpg");
-        imageSet.add("paris_general_001238.jpg");
-        imageSet.add("paris_general_001239.jpg");
-        imageSet.add("paris_general_001241.jpg");
-        imageSet.add("paris_general_001265.jpg");
-        imageSet.add("paris_general_001331.jpg");
-        imageSet.add("paris_general_001445.jpg");
-        imageSet.add("paris_general_001481.jpg");
-        imageSet.add("paris_general_001615.jpg");
-        imageSet.add("paris_general_001620.jpg");
-        imageSet.add("paris_general_001645.jpg");
-        imageSet.add("paris_general_001675.jpg");
-        imageSet.add("paris_general_001676.jpg");
-        imageSet.add("paris_general_001697.jpg");
-        imageSet.add("paris_general_001704.jpg");
-        imageSet.add("paris_general_001722.jpg");
-        imageSet.add("paris_general_001728.jpg");
-        imageSet.add("paris_general_001729.jpg");
-        imageSet.add("paris_general_001732.jpg");
-        imageSet.add("paris_general_001745.jpg");
-        imageSet.add("paris_general_001806.jpg");
-        imageSet.add("paris_general_001809.jpg");
-        imageSet.add("paris_general_001821.jpg");
-        imageSet.add("paris_general_001840.jpg");
-        imageSet.add("paris_general_001846.jpg");
-        imageSet.add("paris_general_001855.jpg");
-        imageSet.add("paris_general_001869.jpg");
-        imageSet.add("paris_general_001870.jpg");
-        imageSet.add("paris_general_001876.jpg");
-        imageSet.add("paris_general_001883.jpg");
-        imageSet.add("paris_general_001886.jpg");
-        imageSet.add("paris_general_001903.jpg");
-        imageSet.add("paris_general_001919.jpg");
-        imageSet.add("paris_general_001930.jpg");
-        imageSet.add("paris_general_001931.jpg");
-        imageSet.add("paris_general_001935.jpg");
-        imageSet.add("paris_general_001938.jpg");
-        imageSet.add("paris_general_001943.jpg");
-        imageSet.add("paris_general_001954.jpg");
-        imageSet.add("paris_general_001969.jpg");
-        imageSet.add("paris_general_001972.jpg");
-        imageSet.add("paris_general_002000.jpg");
-        imageSet.add("paris_general_002004.jpg");
-        imageSet.add("paris_general_002027.jpg");
-        imageSet.add("paris_general_002032.jpg");
-        imageSet.add("paris_general_002038.jpg");
-        imageSet.add("paris_general_002043.jpg");
-        imageSet.add("paris_general_002049.jpg");
-        imageSet.add("paris_general_002102.jpg");
-        imageSet.add("paris_general_002107.jpg");
-        imageSet.add("paris_general_002122.jpg");
-        imageSet.add("paris_general_002150.jpg");
-        imageSet.add("paris_general_002173.jpg");
-        imageSet.add("paris_general_002177.jpg");
-        imageSet.add("paris_general_002186.jpg");
-        imageSet.add("paris_general_002250.jpg");
-        imageSet.add("paris_general_002209.jpg");
-        imageSet.add("paris_general_002220.jpg");
-        imageSet.add("paris_general_002231.jpg");
-        imageSet.add("paris_general_002332.jpg");
-        imageSet.add("paris_general_002337.jpg");
-        imageSet.add("paris_general_002257.jpg");
-        imageSet.add("paris_general_002282.jpg");
-        imageSet.add("paris_general_002315.jpg");
-        imageSet.add("paris_general_002322.jpg");
-        imageSet.add("paris_general_002335.jpg");
-        imageSet.add("paris_general_002338.jpg");
-        imageSet.add("paris_general_002340.jpg");
-        imageSet.add("paris_general_002352.jpg");
-        imageSet.add("paris_general_002359.jpg");
-        imageSet.add("paris_general_002362.jpg");
-        imageSet.add("paris_general_002386.jpg");
-        imageSet.add("paris_general_002391.jpg");
-        imageSet.add("paris_general_002398.jpg");
-        imageSet.add("paris_general_002416.jpg");
-        imageSet.add("paris_general_002443.jpg");
-        imageSet.add("paris_general_002444.jpg");
-        imageSet.add("paris_general_002459.jpg");
-        imageSet.add("paris_general_002473.jpg");
-        imageSet.add("paris_general_002490.jpg");
-        imageSet.add("paris_general_002493.jpg");
-        imageSet.add("paris_general_002502.jpg");
-        imageSet.add("paris_general_002509.jpg");
-        imageSet.add("paris_general_002515.jpg");
-        imageSet.add("paris_general_002522.jpg");
-        imageSet.add("paris_general_002541.jpg");
-        imageSet.add("paris_general_002575.jpg");
-        imageSet.add("paris_general_002589.jpg");
-        imageSet.add("paris_general_002592.jpg");
-        imageSet.add("paris_general_002595.jpg");
-        imageSet.add("paris_general_002609.jpg");
-        imageSet.add("paris_general_002610.jpg");
-        imageSet.add("paris_general_002641.jpg");
-        imageSet.add("paris_general_002645.jpg");
-        imageSet.add("paris_general_002697.jpg");
-        imageSet.add("paris_general_002703.jpg");
-        imageSet.add("paris_general_002708.jpg");
-        imageSet.add("paris_general_002711.jpg");
-        imageSet.add("paris_general_002721.jpg");
-        imageSet.add("paris_general_002726.jpg");
-        imageSet.add("paris_general_002743.jpg");
-        imageSet.add("paris_general_002748.jpg");
-        imageSet.add("paris_general_002764.jpg");
-        imageSet.add("paris_general_002784.jpg");
-        imageSet.add("paris_general_002794.jpg");
-        imageSet.add("paris_general_002800.jpg");
-        imageSet.add("paris_general_002803.jpg");
-        imageSet.add("paris_general_002822.jpg");
-        imageSet.add("paris_general_002832.jpg");
-        imageSet.add("paris_general_002842.jpg");
-        imageSet.add("paris_general_002926.jpg");
-        imageSet.add("paris_general_002934.jpg");
-        imageSet.add("paris_general_002948.jpg");
-        imageSet.add("paris_general_002955.jpg");
-        imageSet.add("paris_general_002961.jpg");
-        imageSet.add("paris_general_002966.jpg");
-        imageSet.add("paris_general_003005.jpg");
-        imageSet.add("paris_general_003011.jpg");
-        imageSet.add("paris_general_003020.jpg");
-        imageSet.add("paris_general_003023.jpg");
-        imageSet.add("paris_general_003038.jpg");
-        imageSet.add("paris_general_003053.jpg");
-        imageSet.add("paris_general_003082.jpg");
-        imageSet.add("paris_general_003086.jpg");
-        imageSet.add("paris_general_003088.jpg");
-        imageSet.add("paris_general_003104.jpg");
+        imageSet.add("all_souls_000000.jpg");
+        imageSet.add("all_souls_000001.jpg");
+        imageSet.add("all_souls_000002.jpg");
+        imageSet.add("all_souls_000005.jpg");
+        imageSet.add("all_souls_000006.jpg");
+        imageSet.add("all_souls_000008.jpg");
+        imageSet.add("all_souls_000013.jpg");
+        imageSet.add("all_souls_000014.jpg");
+        imageSet.add("all_souls_000015.jpg");
+        imageSet.add("all_souls_000019.jpg");
+        imageSet.add("all_souls_000021.jpg");
+        imageSet.add("all_souls_000022.jpg");
+        imageSet.add("all_souls_000026.jpg");
+        imageSet.add("all_souls_000035.jpg");
+        imageSet.add("all_souls_000040.jpg");
+        imageSet.add("all_souls_000041.jpg");
+        imageSet.add("all_souls_000045.jpg");
+        imageSet.add("all_souls_000048.jpg");
+        imageSet.add("all_souls_000051.jpg");
+        imageSet.add("all_souls_000053.jpg");
+        imageSet.add("all_souls_000054.jpg");
+        imageSet.add("all_souls_000055.jpg");
+        imageSet.add("all_souls_000059.jpg");
+        imageSet.add("all_souls_000063.jpg");
+        imageSet.add("all_souls_000064.jpg");
+        imageSet.add("all_souls_000065.jpg");
+        imageSet.add("all_souls_000066.jpg");
+        imageSet.add("all_souls_000068.jpg");
+        imageSet.add("all_souls_000072.jpg");
+        imageSet.add("all_souls_000073.jpg");
+        imageSet.add("all_souls_000085.jpg");
+        imageSet.add("all_souls_000087.jpg");
+        imageSet.add("all_souls_000090.jpg");
+        imageSet.add("all_souls_000091.jpg");
+        imageSet.add("all_souls_000093.jpg");
+        imageSet.add("all_souls_000103.jpg");
+        imageSet.add("all_souls_000105.jpg");
+        imageSet.add("all_souls_000107.jpg");
+        imageSet.add("all_souls_000110.jpg");
+        imageSet.add("all_souls_000119.jpg");
+        imageSet.add("all_souls_000126.jpg");
+        imageSet.add("all_souls_000132.jpg");
+        imageSet.add("all_souls_000133.jpg");
+        imageSet.add("all_souls_000134.jpg");
+        imageSet.add("all_souls_000136.jpg");
+        imageSet.add("all_souls_000140.jpg");
+        imageSet.add("all_souls_000143.jpg");
+        imageSet.add("all_souls_000145.jpg");
+        imageSet.add("all_souls_000146.jpg");
+        imageSet.add("all_souls_000148.jpg");
+        imageSet.add("all_souls_000150.jpg");
+        imageSet.add("all_souls_000152.jpg");
+        imageSet.add("all_souls_000153.jpg");
+        imageSet.add("all_souls_000157.jpg");
+        imageSet.add("all_souls_000159.jpg");
+        imageSet.add("all_souls_000161.jpg");
+        imageSet.add("all_souls_000167.jpg");
+        imageSet.add("all_souls_000174.jpg");
+        imageSet.add("all_souls_000175.jpg");
+        imageSet.add("all_souls_000183.jpg");
+        imageSet.add("all_souls_000184.jpg");
+        imageSet.add("all_souls_000186.jpg");
+        imageSet.add("all_souls_000188.jpg");
+        imageSet.add("all_souls_000197.jpg");
+        imageSet.add("all_souls_000205.jpg");
+        imageSet.add("all_souls_000206.jpg");
+        imageSet.add("all_souls_000209.jpg");
+        imageSet.add("all_souls_000210.jpg");
+        imageSet.add("all_souls_000214.jpg");
+        imageSet.add("all_souls_000220.jpg");
+    }
+
+    public static Short[] vectorSub(Short[] vector1, Short[] vector2) {
+
+        Short[] resultVector = new Short[vector1.length];
+        for (int i = 0; i < vector1.length; i++) {
+            resultVector[i] = (short) (vector1[i] - vector2[i]);
+        }
+        return resultVector;
+    }
+
+    public static Float vectorLength(Short[] vector) {
+        int sum = 0;
+        for (int i = 0; i < vector.length; i++) {
+            sum += vector[i] * vector[i];
+        }
+        return (float) Math.sqrt(sum);
+    }
+
+    public static Short[] string2ShortArray(String descriptor) {
+        String strArr[] = descriptor.split(" ");
+        Short[] array = new Short[strArr.length];
+        for (int i = 0; i < strArr.length; i++) {
+            array[i] = (short) Float.valueOf(strArr[i]).intValue();
+        }
+        return array;
+    }
+
+    public static void main(String[] args) throws Exception {
+//        LshParam lsmParam;
+//        if (1 > 0) {
+//            return;
+//        }
+        Cbir cbir = new Cbir(2, 12, 400, 1936579, 10001, 10002);
+        // 提取目标图像的SIFT特征
+        cbir.featureExtract();
+        // 建立索引
+        cbir.indexBuild();
+        // 更新索引上桶的IDF
+        cbir.updateIDF();
+        // 打印建立索引时的开销信息
+//		cbir.printIndexingInfo();
+        // 处理查询图像
+//        cbir.k = 5;
+        cbir.queryImageProcess();
+        cbir.indexSearch();
+//        cbir.filter();
+        cbir.refineForPr();
+//        cbir.resultRetrieve();
+//        for (int i = 1; i <= scoreArray.size() / 5; i++) {
+//            cbir.k = 5 * i;
+//            cbir.filter();
+//            cbir.refine();
+//            cbir.resultRetrieve();
+//            cbir.refresh();
+//        }
 
     }
 
@@ -365,15 +293,14 @@ public class Cbir {
 //		Scanner scanner = new Scanner(System.in);
 //		System.out.print("输入查询图像路径：");
 //		String queryImagePath = scanner.nextLine();
-//		// TODO 不仅可以输入查询图像路径，还可以输入阈值
 //		System.out.print("输入小阈值（浮点数）：");
 //		float sigma = scanner.nextFloat();
 //		System.out.print("输入大阈值（整数）：");
 //		int Sigma = scanner.nextInt();
 
-        String queryImagePath = "C:\\Users\\pzima\\Desktop\\0.jpg";
-        float sigma = 0.3f;
-        int Sigma = 50;
+        String queryImagePath = "C:\\Users\\pzima\\Desktop\\460.jpg";
+        float sigma = 0.6f;
+        int Sigma = 100;
         S1.sigma = sigma;
         S1.Sigma = Sigma;
         S2.sigma = sigma;
@@ -403,7 +330,6 @@ public class Cbir {
             encryptedQueryDescriptor1[i] = new Descriptor(i, encryptedQueryDescriptors[0]);
             encryptedQueryDescriptor2[i] = new Descriptor(i, encryptedQueryDescriptors[1]);
         }
-        // TODO 改成隐私保护的方案
         S1.queryDescriptorArray = queryDescriptors;
 //        S2.queryDescriptorArray = queryDescriptors;
 
@@ -412,9 +338,7 @@ public class Cbir {
         System.out.println("查询图像的特征数量: " + queryDescriptors.length);
     }
 
-
     public void queryDescriptorBucketAlloc() {
-        // TODO 这里应该通过交互来完成
         // 这里的bucketInfo不带权重
         // L个E2LSH hash table
         queryDescriptorAllocResultMapArray = new HashMap[S1.e2lsh.indexArray.length];
@@ -422,7 +346,10 @@ public class Cbir {
         for (int i = 0; i < queryDescriptorAllocResultMapArray.length; i++) {
             queryDescriptorAllocResultMapArray[i] = new HashMap<>();
         }
+        long startTime = System.currentTimeMillis();
         S1.e2lsh.descriptorsAlloc(queryDescriptorAllocResultMapArray, S1.queryDescriptorArray);
+        S1.processTime = (System.currentTimeMillis() - startTime);
+        S2.processTime = (System.currentTimeMillis() - startTime);
         // 就已经得到了这个查询向量在L个哈希表上的桶及这些桶内容
     }
 
@@ -450,16 +377,7 @@ public class Cbir {
         LogUtil.end();
     }
 
-    public static Short[] string2ShortArray(String descriptor) {
-        String strArr[] = descriptor.split(" ");
-        Short[] array = new Short[strArr.length];
-        for (int i = 0; i < strArr.length; i++) {
-            array[i] = (short) Float.valueOf(strArr[i]).intValue();
-        }
-        return array;
-    }
-
-    public void indexSearch() throws Exception{
+    public void indexSearch() throws Exception {
         LogUtil.start();
         this.queryDescriptorBucketAlloc();
         LogUtil.info("IdxSrh()完成-");
@@ -516,7 +434,8 @@ public class Cbir {
     }
 
     public void filter() throws Exception {
-        for (int i = k; i < Cbir.scoreArray.size(); i++) {
+        for (int i = 20 * k; i < Cbir.scoreArray.size(); i++) {
+            System.out.println(Cbir.scoreArray.get(i).similarity);
             Cbir.filteredSet.add(Cbir.scoreArray.get(i).imageId);
 //            System.out.println("排除图像: " + Cbir.filterScoreArray.get(i).imageId);
         }
@@ -603,14 +522,14 @@ public class Cbir {
                     similarImageCount++;
                 }
             }
-            System.out.println(k/ 5 + "k时相似图片比 " + similarImageCount * 1.0 / 5);
+            System.out.println(k / 5 + "k时相似图片比 " + similarImageCount * 1.0 / 5);
         } else {
             for (int i = 0; i < resultList.size(); i++) {
                 if (imageSet.contains(resultList.get(i).imageId)) {
                     similarImageCount++;
                 }
             }
-            System.out.println(k/ 5 + "k时相似图片比 " + similarImageCount * 1.0 / 5);
+            System.out.println(k / 5 + "k时相似图片比 " + similarImageCount * 1.0 / 5);
         }
     }
 
@@ -623,32 +542,86 @@ public class Cbir {
         System.out.println("===============================");
     }
 
-    public static void main(String[] args) throws Exception {
-//        LshParam lsmParam;
-//        if (1 > 0) {
-//            return;
-//        }
-        Cbir cbir = new Cbir(2, 12, 400, 1936579, 10001, 10002);
-        // 提取目标图像的SIFT特征
-        cbir.featureExtract();
-        // 建立索引
-        cbir.indexBuild();
-        // 更新索引上桶的IDF
-        cbir.updateIDF();
-        // 打印建立索引时的开销信息
-//		cbir.printIndexingInfo();
-        // 处理查询图像
-        cbir.queryImageProcess();
-        cbir.indexSearch();
-        cbir.refine();
-//        cbir.resultRetrieve();
-//        for (int i = 1; i <= scoreArray.size() / 5; i++) {
-//            cbir.k = 5 * i;
-//            cbir.filter();
-//            cbir.refine();
-            cbir.resultRetrieve();
-//            cbir.refresh();
+    public void refineForPr() throws Exception {
+        CountDownLatch countDownLatch = new CountDownLatch(2);
+        S1.countDownLatch = countDownLatch;
+        S2.countDownLatch = countDownLatch;
+
+        LogUtil.start();
+        new Thread(() -> {
+            try {
+                S1.exactDistanceCompute();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+        new Thread(() -> {
+            try {
+                S2.exactDistanceCompute();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        countDownLatch.await();
+
+        countDownLatch = new CountDownLatch(2);
+        S1.countDownLatch = countDownLatch;
+        S2.countDownLatch = countDownLatch;
+
+        new Thread(() -> {
+            try {
+                S1.exactSiftMatch();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+        new Thread(() -> {
+            try {
+                S2.exactSiftMatch();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        countDownLatch.await();
+
+        // 对两个Map的结果进行排序
+        HashMap<String, Integer> fullMap = new HashMap<>();
+        for (String imageId : S1.refineMap.keySet()) {
+            fullMap.put(imageId, S1.refineMap.get(imageId));
+        }
+        for (String imageId : S2.refineMap.keySet()) {
+            if (fullMap.containsKey(imageId)) {
+                fullMap.replace(imageId, fullMap.get(imageId) + S2.refineMap.get(imageId));
+            } else {
+                fullMap.put(imageId, S2.refineMap.get(imageId));
+            }
+        }
+        resultList = new ArrayList<>();
+        for (String imageId : fullMap.keySet()) {
+            resultList.add(new Similarity(imageId, (float) fullMap.get(imageId)));
+        }
+//        System.out.println("结果集的大小: " + resultList.size());
+        Collections.sort(resultList);
+//        for (Similarity similarity : resultList) {
+//            System.out.println(similarity.imageId + " " + similarity.similarity);
 //        }
 
+
+        LogUtil.info("Refine()完成-");
+        LogUtil.end();
+        int similarImageCount = 0;
+        for (int i = 0; i < resultList.size(); i++) {
+            Similarity similarity = resultList.get(i);
+            if (imageSet.contains(similarity.imageId)) {
+                similarImageCount++;
+            }
+            System.out.println(similarImageCount * 1.0 / imageSet.size() + "\t" + similarImageCount * 1.0 / (i + 1)); // 查全率 + 查准率
+        }
+        System.out.println("S1 查询时间: " + S1.queryTime);
+        System.out.println("S2 查询时间: " + S2.queryTime);
+        System.out.println("S1 查询计算时间: " + S1.processTime);
+        System.out.println("S2 查询计算时间: " + S2.processTime);
     }
 }

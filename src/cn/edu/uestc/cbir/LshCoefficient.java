@@ -4,55 +4,55 @@ import java.io.Serializable;
 import java.util.Random;
 
 public class LshCoefficient implements Serializable {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -134283924245332489L;
-	public Float[] a;
-	public Float b;
-	public int w;
+    /**
+     *
+     */
+    private static final long serialVersionUID = -134283924245332489L;
+    public Float[] a;
+    public Float b;
+    public int w;
 
-	public LshCoefficient() {
-	}
+    public LshCoefficient() {
+    }
 
-	public Float[] getA() {
-		return a;
-	}
+    public LshCoefficient(int d, int w, Random random) {
+        this.a = new Float[d];
+        this.b = random.nextFloat() * w;
+        this.w = w;
+        for (int i = 0; i < d; i++) {
+            a[i] = (float) random.nextGaussian();
+        }
+    }
 
-	public void setA(Float[] a) {
-		this.a = a;
-	}
+    public LshCoefficient(Float[] a, Float b, int w) {
+        super();
+        this.a = a;
+        this.b = b;
+        this.w = w;
+    }
 
-	public Float getB() {
-		return b;
-	}
+    public Float[] getA() {
+        return a;
+    }
 
-	public void setB(Float b) {
-		this.b = b;
-	}
+    public void setA(Float[] a) {
+        this.a = a;
+    }
 
-	public int getW() {
-		return w;
-	}
+    public Float getB() {
+        return b;
+    }
 
-	public void setW(int w) {
-		this.w = w;
-	}
+    public void setB(Float b) {
+        this.b = b;
+    }
 
-	public LshCoefficient(int d, int w, Random random) {
-		this.a = new Float[d];
-		this.b = random.nextFloat() * w;
-		this.w = w;
-		for (int i = 0; i < d; i++) {
-			a[i] = (float) random.nextGaussian();
-		}
-	}
+    public int getW() {
+        return w;
+    }
 
-	public LshCoefficient(Float[] a, Float b, int w) {
-		super();
-		this.a = a;
-		this.b = b;
-		this.w = w;
-	}
+    public void setW(int w) {
+        this.w = w;
+    }
 
 }
